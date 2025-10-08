@@ -1,3 +1,5 @@
+export OPENAI_API_KEY="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"
+
 python update_prompt_llm.py \
   --path inpo_iter2_skyworks_1000.json \
   --key all_rm_scores \
