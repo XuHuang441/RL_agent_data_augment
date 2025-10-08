@@ -24,18 +24,13 @@ import numpy as np
 import asyncio
 import time
 import math
+from ast import literal_eval
 from typing import Any, Dict, List, Tuple, Optional
-from pydantic import BaseModel
 
 try:
     import httpx  # 用于异步HTTP调用
 except ImportError:
     raise SystemExit("Please `pip install httpx` first.")
-
-class DataPair(BaseModel):
-    analysis: str
-    new_prompt: str
-    reference_answer: str
 
 USER_PROMPT_TEMPLATE = """
 You are an expert in AI training data generation and prompt engineering. Your task is to help me create a high-quality data pair for a challenging scenario where my own models are failing.
@@ -67,7 +62,6 @@ Please structure your response using the following JSON format:
     "reference_answer": "<high-quality example answer to the new prompt.>"
 }}
 """.strip()
-
 
 def load_records(path: Path) -> List[Dict[str, Any]]:
     """支持 JSON(数组) 或 JSONL(每行一个对象)"""
@@ -178,20 +172,110 @@ async def call_chat_completions(
     return content
 
 
-def safe_json_parse(s: str) -> Optional[Dict[str, Any]]:
-    """尝试把 LLM 输出解析为 JSON 对象；失败则返回 None"""
+def safe_json_parse(s: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    """尝试把 LLM 输出解析为 JSON 对象；失败则返回 (None, 错误信息)"""
+
+    attempts: List[str] = []
+    MAX_NESTED_DEPTH = 3
+
+    def _coerce_to_dict(value: Any, depth: int) -> Optional[Dict[str, Any]]:
+        """Normalize parsed values (possibly strings/lists) into a dict when possible."""
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped.startswith("{") and stripped.endswith("}"):
+                if depth >= MAX_NESTED_DEPTH:
+                    attempts.append("nested JSON string exceeded max depth")
+                    return None
+                return _attempt(stripped, depth + 1)
+        if isinstance(value, list) and len(value) == 1:
+            if depth >= MAX_NESTED_DEPTH:
+                attempts.append("nested list wrapper exceeded max depth")
+                return None
+            return _coerce_to_dict(value[0], depth + 1)
+        attempts.append(f"parsed value of type {type(value).__name__} is not a dict")
+        return None
+
+    def _attempt(candidate: str, depth: int = 0) -> Optional[Dict[str, Any]]:
+        """Try tolerant parsers on the candidate string."""
+        try:
+            loaded = json.loads(candidate)
+        except Exception as json_err:
+            attempts.append(f"json.loads: {json_err}")
+        else:
+            maybe_dict = _coerce_to_dict(loaded, depth)
+            if maybe_dict is not None:
+                return maybe_dict
+        try:
+            parsed = literal_eval(candidate)
+        except Exception as literal_err:
+            attempts.append(f"literal_eval: {literal_err}")
+            return None
+        maybe_dict = _coerce_to_dict(parsed, depth)
+        if maybe_dict is not None:
+            return maybe_dict
+        return None
+
     s = s.strip()
+    if not s:
+        return None, "empty response"
+
     # 有些模型会包一层 ```json ... ```
     if s.startswith("```"):
-        # 粗略剥离代码块
         fence = "```"
         s = s.strip(fence).strip()
         if s.lower().startswith("json"):
             s = s[4:].strip()
-    try:
-        return json.loads(s)
-    except Exception:
-        return None
+
+    # 首先尝试整体解析
+    parsed = _attempt(s)
+    if parsed is not None:
+        return parsed, None
+
+    # 再尝试截取首尾的大括号之间的部分
+    start = s.find("{")
+    end = s.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        candidate = s[start : end + 1]
+        parsed = _attempt(candidate)
+        if parsed is not None:
+            return parsed, None
+
+    # 部分模型会在 JSON 后补充说明，如 "...}" + "某些额外内容"
+    # 尝试逐步收缩尾部，直到能成功解析或耗尽
+    if start != -1:
+        for end_idx in range(len(s) - 1, start, -1):
+            if s[end_idx] == "}":
+                candidate = s[start : end_idx + 1]
+                parsed = _attempt(candidate)
+                if parsed is not None:
+                    return parsed, None
+
+    error = "; ".join(dict.fromkeys(attempts)) if attempts else "failed to parse JSON"
+    return None, error
+
+
+DESIRED_OUTPUT_KEYS = ("analysis", "new_prompt", "reference_answer")
+
+
+def extract_desired_fields(parsed: Optional[Dict[str, Any]]) -> Dict[str, Optional[str]]:
+    """Return a dict with the required keys mapped to strings or None."""
+    result: Dict[str, Optional[str]] = {key: None for key in DESIRED_OUTPUT_KEYS}
+    if not isinstance(parsed, dict):
+        return result
+
+    for key in DESIRED_OUTPUT_KEYS:
+        value = parsed.get(key)
+        if isinstance(value, str):
+            result[key] = value
+        elif value is not None:
+            # Convert non-string JSON values into a compact JSON string for logging.
+            try:
+                result[key] = json.dumps(value, ensure_ascii=False)
+            except TypeError:
+                result[key] = str(value)
+    return result
 
 
 async def producer_consumer(
@@ -216,18 +300,28 @@ async def producer_consumer(
                     last_err = None
                     for attempt in range(1, retry + 1):
                         try:
-                            parsed = await call_chat_completions(
+                            response_text = await call_chat_completions(
                                 client=client,
                                 api_base=api_base,
                                 model=model,
                                 api_key=api_key,
-                                messages=[{"role": "user", "content": payload["user_prompt_text"]}],
+                                messages=[
+                                    {"role": "user", "content": payload["user_prompt_text"]},
+                                ],
                                 timeout=180.0,
                             )
+                            llm_json, parse_error = safe_json_parse(response_text)
+                            llm_struct = llm_json
+                            desired_fields = extract_desired_fields(llm_json)
                             fout.write(json.dumps({
                                 "index": idx,
                                 "original_prompt": payload.get("original_prompt"),
-                                "llm_struct": parsed,
+                                "llm_raw": response_text,
+                                "llm_struct": llm_struct,
+                                "llm_struct_parse_error": parse_error,
+                                "analysis": desired_fields["analysis"],
+                                "new_prompt": desired_fields["new_prompt"],
+                                "reference_answer": desired_fields["reference_answer"],
                                 "sample_meta": payload.get("sample_meta", {}),
                                 "ts": time.time(),
                             }, ensure_ascii=False) + "\n")
