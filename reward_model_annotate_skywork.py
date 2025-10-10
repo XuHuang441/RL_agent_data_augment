@@ -35,7 +35,7 @@ model = AutoModelForSequenceClassification.from_pretrained(
     trust_remote_code=True,
     torch_dtype=torch.bfloat16,
     cache_dir=args.cache_dir,
-    attn_implementation="flash_attention_2",  # Recommended for performance
+    # attn_implementation="flash_attention_2",  # Recommended for performance
     num_labels=1,  # Standard for reward models
 )
 tokenizer = AutoTokenizer.from_pretrained(args.reward_model, cache_dir=args.cache_dir)
