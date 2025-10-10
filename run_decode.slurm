@@ -24,7 +24,7 @@ export HF_HOME=/hai/scratch/fangwu97/xu/.cache/hf
 #/hai/scratch/fangwu97/miniconda3/envs/inpo/bin/python -m post_process \
 #     --generation_file_dir "/hai/scratch/fangwu97/xu/RL_agent_data_augment/model_gen"
 
-/hai/scratch/fangwu97/miniconda3/envs/sim/bin/python -m reward_model_annotate_skywork \
+/hai/scratch/fangwu97/miniconda3/envs/inpo/bin/python -m reward_model_annotate_skywork \
      --generation_file "/hai/scratch/fangwu97/xu/RL_agent_data_augment/model_gen/all_outputs.json" \
      --output_dir "/hai/scratch/fangwu97/xu/RL_agent_data_augment/rm_skywork" \
      --reward_model "/hai/scratch/fangwu97/xu/cache/Skywork-Reward-V2-Llama-3.1-8B" \
