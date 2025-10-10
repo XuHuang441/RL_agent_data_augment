@@ -13,7 +13,7 @@ for SEED in 13 21 42 79 100
      echo "Running decode with seed $SEED..."
      stdbuf -oL -eL /hai/scratch/fangwu97/miniconda3/envs/inpo/bin/python -u -m decode \
      --data_dir "/hai/scratch/fangwu97/xu/RL_agent_data_augment/processed_samples.jsonl" \
-     --model "google/gemma-2-9b-it" \
+     --model "/hai/scratch/fangwu97/xu/cache/google/gemma-2-9b-it/" \
      --seed "$SEED" \
      --output_dir "/hai/scratch/fangwu97/xu/RL_agent_data_augment/model_gen" \
      --batch_size 96 \
