@@ -23,6 +23,10 @@ random_select_json.py
 1. 剔除掉low_quality_samples，剩下的prompts：[high_quality_samples.json](size1k%2Fhigh_quality_samples.json)
 2. teacher生成的prompts：[processed_samples.jsonl](size1k%2Fprocessed_samples.jsonl)
 
+[check_if_api_empty_output.py](check_if_api_empty_output.py)
+
+检查processed_samples.jsonl中有没有api返回空的输出
+
 [run_decode.slurm](run_decode.slurm)
 
 使用模型，用[processed_samples.jsonl](size1k%2Fprocessed_samples.jsonl)里的prompt生成5个新回复，并使用rm标注每个回复的分数
