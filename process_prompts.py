@@ -25,8 +25,9 @@ if not api_key:
 client = OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1")
 
 # 文件路径配置
-INPUT_JSON_FILE = 'inpo_iter2_skyworks_1000.json'  # 输入的 JSON 文件名
-OUTPUT_JSONL_FILE = 'processed_samples.jsonl'  # 输出的 JSONL 文件名
+INPUT_JSON_FILE = 'inpo_iter2_skyworks_10k.json'  # 输入的 JSON 文件名
+OUTPUT_JSONL_FILE = 'size10k/processed_samples_10k.jsonl'  # 输出的 JSONL 文件名
+HIGH_QUALITY_JSON_FILE = 'size10k/high_quality_samples_10k.json'
 
 # 模型和参数配置
 OPENAI_MODEL = "gpt-5-mini"  # 推荐使用支持 JSON 模式的较新模型
@@ -116,15 +117,23 @@ def load_and_filter_samples(filepath: str, q: float) -> List[Dict[str, Any]]:
 
     # 筛选低分样本
     low_quality_samples = []
+    high_quality_samples = []
     for sample in valid_samples:
-        # 条件1: 平均分低于阈值
-        if sample['avg_score'] <= score_threshold:
-            # 条件2: 所有单项分数都不高于整体平均分
-            if all(score <= overall_avg_score for score in sample['all_rm_scores']):
-                low_quality_samples.append(sample)
+        is_low_quantile = sample['avg_score'] <= score_threshold
+        all_scores_below_avg = all(score <= overall_avg_score for score in sample['all_rm_scores'])
 
-    print(f"筛选出 {len(low_quality_samples)} 个需要处理的低分样本。")
-    return low_quality_samples
+        # 同时满足两个条件才算低分样本
+        if is_low_quantile and all_scores_below_avg:
+            low_quality_samples.append(sample)
+        else:
+            # 否则就是高分样本
+            high_quality_samples.append(sample)
+
+    print(f"筛选出 {len(low_quality_samples)} 个低分样本。")
+    print(f"剩余 {len(high_quality_samples)} 个高分样本。")
+
+    # 返回两个列表
+    return low_quality_samples, high_quality_samples
 
 
 def query_openai_for_enhancement(prompt: str) -> Dict[str, Any]:
@@ -209,7 +218,21 @@ def process_single_sample(sample: Dict[str, Any]) -> Dict[str, Any]:
 def main():
     """主执行函数 (使用 ThreadPoolExecutor 进行并行处理)"""
     # 步骤 1: 加载并筛选样本
-    low_quality_samples = load_and_filter_samples(INPUT_JSON_FILE, QUANTILE)
+    low_quality_samples, high_quality_samples = load_and_filter_samples(INPUT_JSON_FILE, QUANTILE)
+
+    if high_quality_samples:
+        try:
+            # 在写入前，我们可以选择性地移除为计算添加的 'avg_score' 字段
+            # 这样可以保持输出文件与原始文件格式完全一致
+            for sample in high_quality_samples:
+                sample.pop('avg_score', None)
+
+            with open(HIGH_QUALITY_JSON_FILE, 'w', encoding='utf-8') as f:
+                # 使用 indent=4 格式化输出 JSON，使其易于阅读
+                json.dump(high_quality_samples, f, indent=4, ensure_ascii=False)
+            print(f"\n高分样本已成功保存至: {HIGH_QUALITY_JSON_FILE}")
+        except IOError as e:
+            print(f"错误：无法写入文件 {HIGH_QUALITY_JSON_FILE}。原因: {e}")
 
     if not low_quality_samples:
         print("没有需要处理的样本，程序退出。")

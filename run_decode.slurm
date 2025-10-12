@@ -8,25 +8,25 @@
 
 export HF_HOME=/hai/scratch/fangwu97/xu/.cache/hf
 
-#for SEED in 13 21 42 79 100
-#  do
-#     echo "Running decode with seed $SEED..."
-#     stdbuf -oL -eL /hai/scratch/fangwu97/miniconda3/envs/inpo/bin/python -u -m decode \
-#     --data_dir "/hai/scratch/fangwu97/xu/RL_agent_data_augment/processed_samples.jsonl" \
-#     --model "/hai/scratch/fangwu97/xu/cache/google/gemma-2-9b-it/" \
-#     --seed "$SEED" \
-#     --output_dir "/hai/scratch/fangwu97/xu/RL_agent_data_augment/model_gen" \
-#     --batch_size 96 \
-#     --cache_dir "/hai/scratch/fangwu97/xu/cache" \
-#     --num_gpu 4 # Tensor Parallelism
-#  done
-#
-#/hai/scratch/fangwu97/miniconda3/envs/inpo/bin/python -m post_process \
-#     --generation_file_dir "/hai/scratch/fangwu97/xu/RL_agent_data_augment/model_gen"
+for SEED in 13 21 42 79 100
+  do
+     echo "Running decode with seed $SEED..."
+     stdbuf -oL -eL /hai/scratch/fangwu97/miniconda3/envs/inpo/bin/python -u -m decode \
+     --data_dir "/hai/scratch/fangwu97/xu/RL_agent_data_augment/size10k/processed_samples_10k.jsonl" \
+     --model "/hai/scratch/fangwu97/xu/cache/google/gemma-2-9b-it/" \
+     --seed "$SEED" \
+     --output_dir "/hai/scratch/fangwu97/xu/RL_agent_data_augment/model_gen/10k" \
+     --batch_size 96 \
+     --cache_dir "/hai/scratch/fangwu97/xu/cache" \
+     --num_gpu 4 # Tensor Parallelism
+  done
+
+/hai/scratch/fangwu97/miniconda3/envs/inpo/bin/python -m post_process \
+     --generation_file_dir "/hai/scratch/fangwu97/xu/RL_agent_data_augment/model_gen/10k"
 
 /hai/scratch/fangwu97/miniconda3/envs/inpo/bin/python -m reward_model_annotate_skywork \
-     --generation_file "/hai/scratch/fangwu97/xu/RL_agent_data_augment/model_gen/all_outputs.json" \
-     --output_dir "/hai/scratch/fangwu97/xu/RL_agent_data_augment/rm_skywork" \
+     --generation_file "/hai/scratch/fangwu97/xu/RL_agent_data_augment/model_gen/10k/all_outputs.json" \
+     --output_dir "/hai/scratch/fangwu97/xu/RL_agent_data_augment/rm_skywork/10k" \
      --reward_model "/hai/scratch/fangwu97/xu/cache/Skywork-Reward-V2-Llama-3.1-8B" \
      --cache_dir "/hai/scratch/fangwu97/xu/cache"
 
