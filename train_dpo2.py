@@ -45,7 +45,7 @@ from typing import Optional
 
 import torch
 from accelerate import logging
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from transformers import AutoModelForCausalLM
 
 from trl import (
@@ -101,20 +101,7 @@ def main(script_args, training_args, model_args, dataset_args):
     #     ]
 
     # Load the dataset
-    if dataset_args.datasets and script_args.dataset_name:
-        logger.warning(
-            "Both `datasets` and `dataset_name` are provided. The `datasets` argument will be used to load the "
-            "dataset and `dataset_name` will be ignored."
-        )
-        dataset = get_dataset(dataset_args)
-    elif dataset_args.datasets and not script_args.dataset_name:
-        dataset = get_dataset(dataset_args)
-    elif not dataset_args.datasets and script_args.dataset_name:
-        dataset = load_dataset(
-            script_args.dataset_name, name=script_args.dataset_config, streaming=script_args.dataset_streaming
-        )
-    else:
-        raise ValueError("Either `datasets` or `dataset_name` must be provided.")
+    dataset = load_from_disk(script_args.dataset_name)
 
     print("len:", len(dataset))
     print("columns:", getattr(dataset, "column_names", None))
