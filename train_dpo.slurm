@@ -35,7 +35,7 @@ export WANDB_PROJECT=rl_agent_gen
 /hai/scratch/fangwu97/miniconda3/envs/sim/bin/accelerate launch \
     --config_file accelerate_configs/deepspeed_zero3.yaml \
     -m train_dpo2 \
-    --dataset_name XuHuang/po_ready_data_10k \
+    --dataset_name po_ready_data_10k \
     --model_name_or_path /hai/scratch/fangwu97/xu/cache/google/gemma-2-9b-it/ \
     --learning_rate 5.0e-7 \
     --beta 0.01 \
