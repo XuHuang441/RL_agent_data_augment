@@ -72,50 +72,44 @@ def main(script_args, training_args, model_args, dataset_args):
     ################
     # Model
     ###################
-    # dtype = model_args.dtype if model_args.dtype in ["auto", None] else getattr(torch, model_args.dtype)
-    # model_kwargs = dict(
-    #     revision=model_args.model_revision,
-    #     attn_implementation=model_args.attn_implementation,
-    #     dtype=dtype,
-    # )
-    # quantization_config = get_quantization_config(model_args)
-    # if quantization_config is not None:
-    #     # Passing None would not be treated the same as omitting the argument, so we include it only when valid.
-    #     model_kwargs["device_map"] = get_kbit_device_map()
-    #     model_kwargs["quantization_config"] = quantization_config
-    #
-    # model = AutoModelForCausalLM.from_pretrained(
-    #     model_args.model_name_or_path, trust_remote_code=model_args.trust_remote_code, **model_kwargs
-    # )
-    # peft_config = get_peft_config(model_args)
-    # if peft_config is None:
-    #     ref_model = AutoModelForCausalLM.from_pretrained(
-    #         model_args.model_name_or_path, trust_remote_code=model_args.trust_remote_code, **model_kwargs
-    #     )
-    # else:
-    #     ref_model = None
-    # if script_args.ignore_bias_buffers:
-    #     # torch distributed hack
-    #     model._ddp_params_and_buffers_to_ignore = [
-    #         name for name, buffer in model.named_buffers() if buffer.dtype == torch.bool
-    #     ]
+    dtype = model_args.dtype if model_args.dtype in ["auto", None] else getattr(torch, model_args.dtype)
+    model_kwargs = dict(
+        revision=model_args.model_revision,
+        attn_implementation=model_args.attn_implementation,
+        dtype=dtype,
+    )
+    quantization_config = get_quantization_config(model_args)
+    if quantization_config is not None:
+        # Passing None would not be treated the same as omitting the argument, so we include it only when valid.
+        model_kwargs["device_map"] = get_kbit_device_map()
+        model_kwargs["quantization_config"] = quantization_config
+
+    model = AutoModelForCausalLM.from_pretrained(
+        model_args.model_name_or_path, trust_remote_code=model_args.trust_remote_code, **model_kwargs
+    )
+    peft_config = get_peft_config(model_args)
+    if peft_config is None:
+        ref_model = AutoModelForCausalLM.from_pretrained(
+            model_args.model_name_or_path, trust_remote_code=model_args.trust_remote_code, **model_kwargs
+        )
+    else:
+        ref_model = None
+    if script_args.ignore_bias_buffers:
+        # torch distributed hack
+        model._ddp_params_and_buffers_to_ignore = [
+            name for name, buffer in model.named_buffers() if buffer.dtype == torch.bool
+        ]
 
     # Load the dataset
     dataset = load_from_disk(script_args.dataset_name)
-
-    print("len:", len(dataset))
-    print("columns:", getattr(dataset, "column_names", None))
-    print("features:", getattr(dataset, "features", None))
-
-    sys.exit(0)
 
     # Initialize the DPO trainer
     trainer = DPOTrainer(
         model,
         ref_model,
         args=training_args,
-        train_dataset=dataset[script_args.dataset_train_split],
-        eval_dataset=dataset[script_args.dataset_test_split] if training_args.eval_strategy != "no" else None,
+        train_dataset=dataset['train'],
+        eval_dataset=dataset['test'] if training_args.eval_strategy != "no" else None,
         peft_config=peft_config,
     )
 

@@ -31,6 +31,8 @@
 #    --seed 42 \
 #    --bf16 \
 #    --grad_checkpointing
+
+# dataset has to be stored at local directory since we use load_from_disk
 export WANDB_PROJECT=rl_agent_gen
 /hai/scratch/fangwu97/miniconda3/envs/sim/bin/accelerate launch \
     --config_file accelerate_configs/deepspeed_zero3.yaml \
