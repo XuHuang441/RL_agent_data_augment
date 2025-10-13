@@ -30,3 +30,15 @@ random_select_json.py
 [run_decode.slurm](run_decode.slurm)
 
 使用模型，用[processed_samples.jsonl](size1k%2Fprocessed_samples.jsonl)里的prompt生成5个新回复，并使用rm标注每个回复的分数
+
+[filter_json.py](rm_skywork%2Ffilter_json.py)
+
+筛选掉所有分数小于0，或者所有分数都相等的prompt
+
+[merge_json.py](merge_json.py)
+
+将[filtered.json](rm_skywork%2F10k%2Ffiltered.json)和[high_quality_samples_10k.json](size10k%2Fhigh_quality_samples_10k.json)合成一个file，形成最后训练ready的最终json：[merged_final_data.json](size10k%2Fmerged_final_data.json)
+
+[process_pref_data.py](process_pref_data.py)
+
+将[merged_final_data.json](size10k%2Fmerged_final_data.json)进行训练集和测试集的切分，同时转换成hf的数据集格式

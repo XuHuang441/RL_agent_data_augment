@@ -26,4 +26,4 @@ def filter_json(input_path, output_path):
         json.dump(filtered, f, ensure_ascii=False, indent=4)
 
 # 示例调用
-filter_json("1k/all_outputs_rm.json", "1k/filtered.json")
+filter_json("10k/all_outputs_rm.json", "10k/filtered.json")

@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import Counter
 
-file_path = "merged_final_data.json"
+file_path = "size1k/merged_final_data.json"
 # file_path = "size1k/inpo_iter2_skyworks_1000.json"
 # file_path = "/Users/huangxu/Downloads/inpo_iter2_skywork.json"
 
