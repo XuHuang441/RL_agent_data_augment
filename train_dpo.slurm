@@ -37,7 +37,8 @@ export WANDB_PROJECT=rl_agent_gen
 /hai/scratch/fangwu97/miniconda3/envs/sim/bin/accelerate launch \
     --config_file accelerate_configs/deepspeed_zero3.yaml \
     -m train_dpo2 \
-    --dataset_name po_ready_data_10k \
+    --dataset_name original_data_10k \
+    --output_dir gemma-2-9b-it-DPO-10k-original \
     --model_name_or_path /hai/scratch/fangwu97/xu/cache/google/gemma-2-9b-it/ \
     --learning_rate 5.0e-7 \
     --beta 0.01 \
@@ -47,7 +48,6 @@ export WANDB_PROJECT=rl_agent_gen
     --gradient_checkpointing \
     --eval_strategy steps \
     --eval_steps 10 \
-    --output_dir gemma-2-9b-it-DPO-10k \
     --no_remove_unused_columns \
     --max_length 2048 \
     --max_prompt_length 1800 \
